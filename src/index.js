@@ -13,10 +13,8 @@ app.use(morgan("dev"));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Routes
-app.get("/", (req, res) => {
-  res.send("Server is running 🚀");
-});
+// Import routes
+require("./routes/index")(app);
 
 // Example API route
 app.get("/api/data", (req, res) => {
