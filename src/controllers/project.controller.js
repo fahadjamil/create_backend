@@ -1,11 +1,14 @@
 const db = require("../models");
 const Project = db.Project;
+const DraftProject = db.DraftProject;
 const upload = require("../middlewares/upload");
+const { cloudinary } = require("../config/cloudinary");
+const { bucket } = require("../config/firebase.config");
 
 // Create and store a new project
 exports.Newproject = async (req, res) => {
   try {
-    console.log("make new project");
+    console.log("📌 make new project");
 
     const requiredFields = [
       "projectName",
@@ -13,12 +16,12 @@ exports.Newproject = async (req, res) => {
       "client",
       "startDate",
       "endDate",
-    ]; // ❌ removed media
+    ];
 
-    // ✅ Create new project
+    // ✅ Validate required fields only if creating new project
     if (!req.body.pid) {
       const missingFields = requiredFields.filter(
-        (field) => !req.body[field] || req.body[field].trim() === ""
+        (field) => !req.body[field] || req.body[field].toString().trim() === ""
       );
 
       if (missingFields.length > 0) {
@@ -52,8 +55,11 @@ exports.Newproject = async (req, res) => {
         userId: req.body.userId,
       });
 
+      // ✅ Remove from draft if exists
+      await DraftProject.destroy({ where: { dpid: req.body.pid } });
+
       return res.status(200).json({
-        message: "✅ Project updated successfully",
+        message: "✅ Project updated successfully (draft removed)",
         project,
       });
     } else {
@@ -63,9 +69,14 @@ exports.Newproject = async (req, res) => {
         userId: req.body.userId,
       });
 
+      // ✅ Remove from draft if exists (in case it's being promoted)
+      if (req.body.dpid || req.body.pid) {
+        await DraftProject.destroy({ where: { dpid: req.body.dpid || req.body.pid } });
+      }
+
       return res.status(201).json({
         success: true,
-        message: "✅ Project created successfully",
+        message: "✅ Project created successfully (draft removed if existed)",
         project,
       });
     }
@@ -77,6 +88,7 @@ exports.Newproject = async (req, res) => {
     });
   }
 };
+
 
 // ✅ Get all projects
 exports.allprojects = async (req, res) => {
@@ -113,21 +125,22 @@ exports.allprojects = async (req, res) => {
 
 exports.uploadProjectPictures = async (req, res) => {
   try {
-    // Ensure files exist
-    if (!req.files || req.files.length === 0)
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No files uploaded" });
+    }
 
     let project;
 
-    // Check if projectId is provided
+    // If projectId exists, update that project
     if (req.body.projectId) {
-      project = await Project.findByPk(req.body.projectId);
-      if (!project)
+      project = await Project.findOne({ where: { pid: req.body.projectId } });
+      if (!project) {
         return res.status(404).json({ message: "Project not found" });
+      }
     } else {
-      // If no projectId, create a new project with minimal info
+      // Create a new project
       project = await Project.create({
-        userId: req.body.userId || null, // optional: associate user
+        userId: req.body.userId || null,
         projectName: req.body.projectName || "Untitled Project",
         projectType: req.body.projectType || "General",
         client: req.body.client || "Unknown",
@@ -138,8 +151,8 @@ exports.uploadProjectPictures = async (req, res) => {
       });
     }
 
-    // Map uploaded files to paths
-    const filePaths = req.files.map((f) => `/uploads/projects/${f.filename}`);
+    // Extract Cloudinary URLs from uploaded files
+    const uploadedUrls = req.files.map((file) => file.path); // file.path is the Cloudinary URL
 
     // Merge with existing media
     let existingMedia = [];
@@ -151,14 +164,14 @@ exports.uploadProjectPictures = async (req, res) => {
       }
     }
 
-    // Update project media
+    // Save updated media list
     await project.update({
-      media: JSON.stringify([...existingMedia, ...filePaths]),
+      media: JSON.stringify([...existingMedia, ...uploadedUrls]),
     });
 
     return res.status(200).json({
       success: true,
-      message: "✅ Pictures uploaded successfully",
+      message: "✅ Pictures uploaded successfully to Cloudinary",
       project,
     });
   } catch (error) {
@@ -238,5 +251,122 @@ exports.updateProject = async (req, res) => {
   } catch (error) {
     console.error("Update project error:", error);
     res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+//  add Draft project
+// 📌 Create or Update Draft Project
+exports.DraftProject = async (req, res) => {
+  try {
+    console.log("📌 make draft project");
+
+    const { pid, userId, ...rest } = req.body;
+
+    if (!userId) {
+      return res.status(400).json({ message: "❌ userId is required" });
+    }
+
+    // 🔹 If pid exists → update, otherwise → create
+    const [draft, created] = await DraftProject.upsert(
+      {
+        dpid: pid, // Sequelize will match this
+        ...rest,
+        userId,
+      },
+      { returning: true } // ensures we get the updated/created row
+    );
+
+    return res.status(created ? 201 : 200).json({
+      success: true,
+      message: created
+        ? "✅ Project draft created successfully"
+        : "✅ Project draft updated successfully",
+      draft,
+    });
+  } catch (error) {
+    console.error("❌ Error in DraftProject:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Something went wrong while creating/updating project",
+      error: error.message,
+    });
+  }
+};
+
+// Set all Draft project
+exports.allDraftprojects = async (req, res) => {
+  try {
+    const userId = req.user?.id || req.query.userId || req.body.userId;
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    const draftProjects = await DraftProject.findAll({
+      where: { userId },
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Draft Projects fetched successfully",
+      data: draftProjects,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching projects:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch projects",
+      error: error.message,
+    });
+  }
+};
+
+// 📌 Get Single Draft Project by ID
+exports.getSingleDraftProject = async (req, res) => {
+  try {
+    const { id } = req.params; // draft project id
+    const userId =
+      req.user?.uid || req.user?.id || req.query.userId || req.body.userId;
+
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Draft project ID is required",
+      });
+    }
+
+    if (!userId) {
+      return res.status(400).json({
+        success: false,
+        message: "User ID is required",
+      });
+    }
+
+    const draftProject = await DraftProject.findOne({
+      where: { dpid: id, userId },
+    });
+
+    if (!draftProject) {
+      return res.status(404).json({
+        success: false,
+        message: "❌ Draft project not found",
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "✅ Draft project fetched successfully",
+      data: draftProject,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching single project:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Failed to fetch draft project",
+      error: error.message,
+    });
   }
 };
