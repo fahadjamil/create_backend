@@ -3,7 +3,6 @@ const Project = db.Project;
 const DraftProject = db.DraftProject;
 const upload = require("../middlewares/upload");
 const { cloudinary } = require("../config/cloudinary");
-const { bucket } = require("../config/firebase.config");
 
 // Create and store a new project
 exports.Newproject = async (req, res) => {

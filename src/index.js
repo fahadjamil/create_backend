@@ -3,7 +3,6 @@ const cors = require("cors");
 const morgan = require("morgan");
 const path = require("path");
 require("dotenv").config();
-require("./config/firebase.config");
 
 let db = require("../src/models");
 
