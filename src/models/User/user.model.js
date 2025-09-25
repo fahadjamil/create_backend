@@ -9,6 +9,7 @@ module.exports = (sequelize, Sequelize) => {
         primaryKey: true,
         defaultValue: Sequelize.UUIDV4,
       },
+
       // Auth credentials
       email: {
         type: DataTypes.STRING,
@@ -23,6 +24,29 @@ module.exports = (sequelize, Sequelize) => {
       password: {
         type: DataTypes.STRING,
         allowNull: false,
+      },
+      pin: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+
+      // New fields
+      phone: {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      },
+      firstName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      lastName: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+      searchTerm: {
+        type: DataTypes.STRING,
+        allowNull: true,
       },
 
       // Profile info

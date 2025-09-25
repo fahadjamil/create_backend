@@ -12,6 +12,7 @@ exports.Newproject = async (req, res) => {
     const requiredFields = [
       "projectName",
       "projectType",
+      "clientName",
       "client",
       "startDate",
       "endDate",
@@ -70,7 +71,9 @@ exports.Newproject = async (req, res) => {
 
       // ✅ Remove from draft if exists (in case it's being promoted)
       if (req.body.dpid || req.body.pid) {
-        await DraftProject.destroy({ where: { dpid: req.body.dpid || req.body.pid } });
+        await DraftProject.destroy({
+          where: { dpid: req.body.dpid || req.body.pid },
+        });
       }
 
       return res.status(201).json({
@@ -87,7 +90,6 @@ exports.Newproject = async (req, res) => {
     });
   }
 };
-
 
 // ✅ Get all projects
 exports.allprojects = async (req, res) => {
@@ -224,6 +226,7 @@ exports.updateProject = async (req, res) => {
     const updatableFields = [
       "projectName",
       "projectType",
+      "clientName",
       "client",
       "startDate",
       "endDate",
@@ -259,21 +262,32 @@ exports.DraftProject = async (req, res) => {
   try {
     console.log("📌 make draft project");
 
-    const { pid, userId, ...rest } = req.body;
+    const { pid, userId, startDate, endDate, dueDate, paymentStartDate, ...rest } = req.body;
 
     if (!userId) {
       return res.status(400).json({ message: "❌ userId is required" });
     }
 
-    // 🔹 If pid exists → update, otherwise → create
-    const [draft, created] = await DraftProject.upsert(
-      {
-        dpid: pid, // Sequelize will match this
-        ...rest,
-        userId,
-      },
-      { returning: true } // ensures we get the updated/created row
-    );
+    // ✅ helper to validate/convert date
+    const parseDateOrNull = (date) => {
+      if (!date) return null;
+      const d = new Date(date);
+      return isNaN(d.getTime()) ? null : d; // Sequelize can take JS Date objects
+    };
+
+    const payload = {
+      dpid: pid,
+      userId,
+      ...rest,
+      startDate: parseDateOrNull(startDate),
+      endDate: parseDateOrNull(endDate),
+      dueDate: parseDateOrNull(dueDate),
+      paymentStartDate: parseDateOrNull(paymentStartDate),
+    };
+
+    const [draft, created] = await DraftProject.upsert(payload, {
+      returning: true,
+    });
 
     return res.status(created ? 201 : 200).json({
       success: true,
@@ -291,6 +305,7 @@ exports.DraftProject = async (req, res) => {
     });
   }
 };
+
 
 // Set all Draft project
 exports.allDraftprojects = async (req, res) => {

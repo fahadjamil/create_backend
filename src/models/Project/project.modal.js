@@ -12,6 +12,7 @@ module.exports = (sequelize, Sequelize) => {
       allowNull: false,
     },
     projectType: DataTypes.STRING,
+    clientName: DataTypes.STRING,
     client: DataTypes.STRING,
     startDate: DataTypes.DATE,
     endDate: DataTypes.DATE,

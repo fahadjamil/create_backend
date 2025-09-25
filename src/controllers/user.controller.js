@@ -7,19 +7,35 @@ const User = db.User;
 exports.signup = async (req, res) => {
   const trans = await db.sequelize.transaction();
   try {
-    const { fullName, email, password } = req.body;
+    const {
+      phone,
+      firstName,
+      lastName,
+      email,
+      password,
+      role, // Default to 'user' if not provided
+      searchTerm,
+    } = req.body;
 
     // Validation
-    if (!fullName || !email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Full name, email, and password are required." });
+    if (!phone || !firstName || !lastName || !email || !password) {
+      return res.status(400).json({
+        message:
+          "Phone, first name, last name, email, and password are required.",
+      });
     }
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ where: { email } });
+    // Check if user already exists (by email or phone)
+    const existingUser = await User.findOne({
+      where: {
+        [db.Sequelize.Op.or]: [{ email }, { phone }],
+      },
+    });
+
     if (existingUser) {
-      return res.status(400).json({ message: "User already exists." });
+      return res.status(400).json({
+        message: "User with this email or phone number already exists.",
+      });
     }
 
     // Hash password
@@ -28,17 +44,25 @@ exports.signup = async (req, res) => {
     // Create new user
     const user = await User.create(
       {
-        full_name: fullName,
+        phone,
+        firstName,
+        lastName,
+        full_name: `${firstName} ${lastName}`,
         email,
         password: hashedPassword,
-        role: "user",
+        role,
+        searchTerm,
       },
-      { transaction: trans } // pass transaction here
+      { transaction: trans }
     );
 
     // Generate JWT token
     const token = jwt.sign(
-      { uid: user.uid, email: user.email, role: user.role },
+      {
+        uid: user.uid,
+        email: user.email,
+        role: user.role,
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
@@ -50,9 +74,13 @@ exports.signup = async (req, res) => {
       token,
       user: {
         uid: user.uid,
+        phone: user.phone,
+        firstName: user.firstName,
+        lastName: user.lastName,
         full_name: user.full_name,
         email: user.email,
         role: user.role,
+        searchTerm: user.searchTerm,
       },
     });
   } catch (error) {
