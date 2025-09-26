@@ -28,6 +28,7 @@ module.exports = (sequelize, Sequelize) => {
       pin: {
         type: DataTypes.STRING,
         allowNull: false,
+        defaultValue: "0000", // or some default PIN
       },
 
       // New fields
