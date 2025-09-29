@@ -7,16 +7,16 @@ const User = db.User;
 exports.signup = async (req, res) => {
   const trans = await db.sequelize.transaction();
   try {
-    const {
-      phone,
-      firstName,
-      lastName,
-      email,
-      password,
-      role, // Default to 'user' if not provided
-      searchTerm,
-    } = req.body;
+    console.log("📥 DEBUG req.body:", req.body); // Add this to debug
 
+    if (!req.body || typeof req.body !== "object") {
+      return res
+        .status(400)
+        .json({ message: "Invalid or missing request body." });
+    }
+
+    const { phone, firstName, lastName, email, password, role, searchTerm } =
+      req.body;
     // Validation
     if (!phone || !firstName || !lastName || !email || !password) {
       return res.status(400).json({
@@ -129,6 +129,24 @@ exports.signin = async (req, res) => {
     });
   } catch (error) {
     console.error("Signin error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: {
+        exclude: ["password"], // Hide password from the response
+      },
+      order: [["createdAt", "DESC"]], // Optional: newest first
+    });
+
+    res.status(200).json({
+      message: "All users retrieved successfully",
+      users,
+    });
+  } catch (error) {
+    console.error("Get all users error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
