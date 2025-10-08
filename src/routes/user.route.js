@@ -9,6 +9,10 @@ module.exports = (app) => {
   // ✅ New route to get all users
   router.get("/users", authController.getAllUsers);
 
+  router.post("/check-email", authController.checkEmail);
+
+  router.post("/check-phone", authController.checkPhoneAndSendOtp);
+
   // Mount the router on /user
   app.use("/user", router);
 };

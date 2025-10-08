@@ -150,3 +150,90 @@ exports.getAllUsers = async (req, res) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+exports.checkEmail = async (req, res) => {
+  try {
+    console.log("📩 Received body:", req.body);
+
+    const { email } = req.body;
+
+    if (!email) {
+      console.warn("⚠️ Email missing in request body");
+      return res.status(400).json({ message: "Email is required." });
+    }
+
+    const existingUser = await User.findOne({ where: { email } });
+    console.log(
+      "🔍 existingUser:",
+      existingUser ? existingUser.email : "Not found"
+    );
+
+    if (existingUser) {
+      return res.status(400).json({
+        exists: true,
+        message: "Email already exists.",
+      });
+    }
+
+    return res.status(200).json({
+      exists: false,
+      message: "Email is available.",
+    });
+  } catch (error) {
+    console.error("❌ Check email error:", error);
+    return res.status(500).json({ message: "Internal server error." });
+  }
+};
+exports.checkPhoneAndSendOtp = async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ message: "Phone number is required." });
+    }
+
+    // 🔍 Check if phone exists in DB
+    const existingUser = await User.findOne({ where: { phone } });
+
+    if (existingUser) {
+      return res.status(400).json({
+        exists: true,
+        message: "This phone number is already registered.",
+      });
+    }
+
+    // ✅ Generate random 6-digit OTP
+    const otpToSend = Math.floor(100000 + Math.random() * 900000);
+
+    // 🔹 Send OTP via external API
+    const axios = require("axios");
+    const response = await axios.post(
+      "https://bsms.its.com.pk/otpsms.php",
+      null, // No body
+      {
+        params: {
+          key: "8aaf1d3a0b626b4840b6558792b4506b",
+          receiver: phone, // e.g. 03134884635
+          sender: "SmartLane",
+          otpcode: otpToSend,
+          param1: "Toseef Kirmani",
+          param2: "Add Money",
+        },
+      }
+    );
+
+    console.log("📤 OTP Response:", response.data);
+
+    // ✅ Respond to client
+    return res.status(200).json({
+      exists: false,
+      message: "Phone not registered. OTP sent successfully.",
+      otp: otpToSend, // You can remove this in production for security
+    });
+  } catch (error) {
+    console.error("❌ Phone check or OTP send error:", error.message);
+    return res.status(500).json({
+      message: "Internal server error or OTP sending failed.",
+      error: error.message,
+    });
+  }
+};
