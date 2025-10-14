@@ -152,35 +152,37 @@ exports.getAllUsers = async (req, res) => {
 };
 exports.checkEmail = async (req, res) => {
   try {
-    console.log("📩 Received body:", req.body);
-
     const { email } = req.body;
 
-    if (!email) {
-      console.warn("⚠️ Email missing in request body");
-      return res.status(400).json({ message: "Email is required." });
+    // 🧩 Input validation
+    if (!email || typeof email !== "string") {
+      return res.status(400).json({ message: "A valid email is required." });
     }
 
+    console.log("📩 Checking email availability:", email);
+
+    // 🔍 Check if email already exists
     const existingUser = await User.findOne({ where: { email } });
-    console.log(
-      "🔍 existingUser:",
-      existingUser ? existingUser.email : "Not found"
-    );
 
     if (existingUser) {
-      return res.status(400).json({
+      console.log("⚠️ Email already registered:", email);
+      return res.status(200).json({
         exists: true,
         message: "Email already exists.",
       });
     }
 
+    console.log("✅ Email available:", email);
     return res.status(200).json({
       exists: false,
       message: "Email is available.",
     });
   } catch (error) {
-    console.error("❌ Check email error:", error);
-    return res.status(500).json({ message: "Internal server error." });
+    console.error("❌ checkEmail() error:", error.message);
+    return res.status(500).json({
+      message: "Internal server error while checking email.",
+      error: error.message,
+    });
   }
 };
 exports.checkPhoneAndSendOtp = async (req, res) => {
@@ -189,6 +191,15 @@ exports.checkPhoneAndSendOtp = async (req, res) => {
 
     if (!phone) {
       return res.status(400).json({ message: "Phone number is required." });
+    }
+
+    // ✅ Strictly validate +92XXXXXXXXXX format (Pakistan)
+    const phoneRegex = /^\+92\d{10}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({
+        message:
+          "Invalid phone format. Please use +92 followed by 10 digits (e.g., +923001234567).",
+      });
     }
 
     // 🔍 Check if phone exists in DB
@@ -205,14 +216,13 @@ exports.checkPhoneAndSendOtp = async (req, res) => {
     const otpToSend = Math.floor(100000 + Math.random() * 900000);
 
     // 🔹 Send OTP via external API
-    const axios = require("axios");
     const response = await axios.post(
       "https://bsms.its.com.pk/otpsms.php",
-      null, // No body
+      null,
       {
         params: {
           key: "8aaf1d3a0b626b4840b6558792b4506b",
-          receiver: phone, // e.g. 03134884635
+          receiver: phone,
           sender: "SmartLane",
           otpcode: otpToSend,
           param1: "Toseef Kirmani",
@@ -226,8 +236,8 @@ exports.checkPhoneAndSendOtp = async (req, res) => {
     // ✅ Respond to client
     return res.status(200).json({
       exists: false,
-      message: "Phone not registered. OTP sent successfully.",
-      otp: otpToSend, // You can remove this in production for security
+      message: `OTP sent successfully to ${phone}`,
+      otp: otpToSend, // ⚠️ Remove in production
     });
   } catch (error) {
     console.error("❌ Phone check or OTP send error:", error.message);
