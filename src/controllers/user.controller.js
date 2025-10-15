@@ -213,8 +213,8 @@ exports.checkPhoneAndSendOtp = async (req, res) => {
       });
     }
 
-    // ✅ Generate random 6-digit OTP
-    const otpToSend = Math.floor(100000 + Math.random() * 900000);
+    // ✅ Generate random 4-digit OTP
+    const otpToSend = Math.floor(1000 + Math.random() * 9000);
 
     // 🔹 Send OTP via external API
     const response = await axios.post(
