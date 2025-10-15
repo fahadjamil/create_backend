@@ -1,5 +1,5 @@
-
 module.exports = (app) => {
-   require("./user.route")(app);     // keep user routes
-   require("./project.route")(app); // add project routes
+  require("./user.route")(app);
+  require("./project.route")(app);
+  require("./client.route")(app);
 };

@@ -12,7 +12,7 @@ const sequelize = new Sequelize(dbConfig.DB, dbConfig.USER, dbConfig.PASSWORD, {
   logging: false,
   dialectOptions: {
     requestTimeout: 10000,
-    useUTC: false, // read from DB without UTC conversion
+    useUTC: false,
     timezone: "+04:00",
     ssl: {
       rejectUnauthorized: false,
@@ -35,11 +35,17 @@ db.sequelize = sequelize;
 db.User = require("./User/user.model")(sequelize, Sequelize);
 db.Project = require("./Project/project.modal")(sequelize, Sequelize);
 db.DraftProject = require("./Project/draftProject.modal")(sequelize, Sequelize);
+db.Client = require("./Client/client.model")(sequelize, Sequelize); // ✅ New Client model
 
-
-// ✅ Example Associations (if needed later)
+// ✅ Example Associations
 db.User.hasMany(db.Project, { foreignKey: "userId", as: "projects" });
 db.Project.belongsTo(db.User, { foreignKey: "userId", as: "owner" });
 db.DraftProject.belongsTo(db.User, { foreignKey: "userId", as: "owner" });
 
+// Optional: User-Client or Project-Client associations (if applicable)
+// Example:
+// db.User.hasMany(db.Client, { foreignKey: "userId", as: "clients" });
+// db.Client.belongsTo(db.User, { foreignKey: "userId", as: "accountManager" });
+
 module.exports = db;
+

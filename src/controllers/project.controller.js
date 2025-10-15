@@ -1,13 +1,15 @@
 const db = require("../models");
 const Project = db.Project;
 const DraftProject = db.DraftProject;
+const Client = db.Client;
+
 const upload = require("../middlewares/upload");
 const { cloudinary } = require("../config/cloudinary");
 
-// Create and store a new project
+// ✅ Create or Update Project + Sync Client
 exports.Newproject = async (req, res) => {
   try {
-    console.log("📌 make new project");
+    console.log("📌 Newproject API hit");
 
     const requiredFields = [
       "projectName",
@@ -15,10 +17,10 @@ exports.Newproject = async (req, res) => {
       "clientName",
       "client",
       "startDate",
-      "endDate",
+      "endDate", // phone is required for client sync
     ];
 
-    // ✅ Validate required fields only if creating new project
+    // If creating new project (pid missing) → validate required fields
     if (!req.body.pid) {
       const missingFields = requiredFields.filter(
         (field) => !req.body[field] || req.body[field].toString().trim() === ""
@@ -26,6 +28,7 @@ exports.Newproject = async (req, res) => {
 
       if (missingFields.length > 0) {
         return res.status(400).json({
+          success: false,
           message: "❌ Missing required fields",
           missing: missingFields,
         });
@@ -34,6 +37,7 @@ exports.Newproject = async (req, res) => {
 
     if (!req.body.userId) {
       return res.status(400).json({
+        success: false,
         message: "❌ userId is required (project must belong to a user)",
       });
     }
@@ -45,9 +49,7 @@ exports.Newproject = async (req, res) => {
       project = await Project.findOne({ where: { pid: req.body.pid } });
 
       if (!project) {
-        return res.status(404).json({
-          message: "❌ Project not found with given PID",
-        });
+        return res.status(404).json({ message: "❌ Project not found" });
       }
 
       await project.update({
@@ -58,9 +60,14 @@ exports.Newproject = async (req, res) => {
       // ✅ Remove from draft if exists
       await DraftProject.destroy({ where: { dpid: req.body.pid } });
 
+      // 🔹 Sync client
+      const client = await syncClient(req.body);
+
       return res.status(200).json({
-        message: "✅ Project updated successfully (draft removed)",
+        success: true,
+        message: "✅ Project updated successfully (client synced, draft removed)",
         project,
+        client,
       });
     } else {
       // 🔹 Create new project
@@ -69,25 +76,66 @@ exports.Newproject = async (req, res) => {
         userId: req.body.userId,
       });
 
-      // ✅ Remove from draft if exists (in case it's being promoted)
+      // ✅ Remove draft if exists
       if (req.body.dpid || req.body.pid) {
         await DraftProject.destroy({
           where: { dpid: req.body.dpid || req.body.pid },
         });
       }
 
+      // 🔹 Sync client
+      const client = await syncClient(req.body);
+
       return res.status(201).json({
         success: true,
-        message: "✅ Project created successfully (draft removed if existed)",
+        message: "✅ Project created successfully (client synced, draft removed)",
         project,
+        client,
       });
     }
   } catch (error) {
     console.error("❌ Error in Newproject:", error);
     return res.status(500).json({
+      success: false,
       message: "Something went wrong while creating/updating project",
       error: error.message,
     });
+  }
+};
+
+// 🔹 Client sync logic (unique by phone)
+const syncClient = async (data) => {
+  try {
+    if (!data.contactNumber) {
+      console.log("⚠️ No phone provided, skipping client sync");
+      return null;
+    }
+
+    const clientData = {
+      fullName: data.clientName || "",
+      clientType: data.client || "",
+      company: data.contactBrand || "",
+      email: data.contactEmail || "",
+      phone: data.contactNumber,
+      address:  "",
+      contactPersonName: data.contactName || "",
+      contactPersonRole: data.contactRole || "",
+    };
+
+    let client = await Client.findOne({ where: { phone: data.pointMobile } });
+
+    if (client) {
+      await client.update(clientData);
+      console.log("🔄 Existing client updated:", client.fullName);
+    } else {
+      client = await Client.create(clientData);
+      console.log("✅ New client created:", client.fullName);
+    }
+
+    return client;
+  } catch (err) {
+    console.error("❌ Client sync failed:", err.message);
+    return null;
   }
 };
 
@@ -262,7 +310,15 @@ exports.DraftProject = async (req, res) => {
   try {
     console.log("📌 make draft project");
 
-    const { pid, userId, startDate, endDate, dueDate, paymentStartDate, ...rest } = req.body;
+    const {
+      pid,
+      userId,
+      startDate,
+      endDate,
+      dueDate,
+      paymentStartDate,
+      ...rest
+    } = req.body;
 
     if (!userId) {
       return res.status(400).json({ message: "❌ userId is required" });
@@ -305,7 +361,6 @@ exports.DraftProject = async (req, res) => {
     });
   }
 };
-
 
 // Set all Draft project
 exports.allDraftprojects = async (req, res) => {
