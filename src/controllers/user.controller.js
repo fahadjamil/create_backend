@@ -196,7 +196,7 @@ exports.checkPhoneAndSendOtp = async (req, res) => {
 
     // ✅ Strictly validate +92XXXXXXXXXX format (Pakistan)
     const phoneRegex = /^\+92\d{10}$/;
-    if (!phoneRegex.test(phone)) {
+    if (!phoneRegex.test(req.body.phone)) {
       return res.status(400).json({
         message:
           "Invalid phone format. Please use +92 followed by 10 digits (e.g., +923001234567).",
