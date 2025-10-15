@@ -188,9 +188,9 @@ exports.checkEmail = async (req, res) => {
 };
 exports.checkPhoneAndSendOtp = async (req, res) => {
   try {
-    const { phone } = req.body;
+    // const { phone } = req.body;
 
-    if (!phone) {
+    if (!req.body.phone) {
       return res.status(400).json({ message: "Phone number is required." });
     }
 
@@ -204,7 +204,7 @@ exports.checkPhoneAndSendOtp = async (req, res) => {
     }
 
     // 🔍 Check if phone exists in DB
-    const existingUser = await User.findOne({ where: { phone } });
+    const existingUser = await User.findOne({ where: { phone:req.body.phone } });
 
     if (existingUser) {
       return res.status(400).json({
@@ -223,7 +223,7 @@ exports.checkPhoneAndSendOtp = async (req, res) => {
       {
         params: {
           key: "8aaf1d3a0b626b4840b6558792b4506b",
-          receiver: phone,
+          receiver: req.body.phone,
           sender: "SmartLane",
           otpcode: otpToSend,
           param1: "Toseef Kirmani",
@@ -237,7 +237,7 @@ exports.checkPhoneAndSendOtp = async (req, res) => {
     // ✅ Respond to client
     return res.status(200).json({
       exists: false,
-      message: `OTP sent successfully to ${phone}`,
+      message: `OTP sent successfully to ${req.body.phone}`,
       otp: otpToSend, // ⚠️ Remove in production
     });
   } catch (error) {
