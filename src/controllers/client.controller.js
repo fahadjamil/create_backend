@@ -1,5 +1,6 @@
 const db = require("../models");
 const Client = db.Client;
+const Project = db.Project;
 
 // Create new client
 exports.createClient = async (req, res) => {
@@ -25,7 +26,9 @@ exports.createClient = async (req, res) => {
     // Check duplicate phone
     const existingClient = await Client.findOne({ where: { phone } });
     if (existingClient) {
-      return res.status(409).json({ message: "Client with this phone number already exists" });
+      return res
+        .status(409)
+        .json({ message: "Client with this phone number already exists" });
     }
 
     // Create client
@@ -52,34 +55,61 @@ exports.createClient = async (req, res) => {
   }
 };
 
-// ✅ Get all clients
+// ✅ Get all clients (with project data if available)
 exports.getAllClients = async (req, res) => {
   try {
     const clients = await Client.findAll({
-      order: [["createdAt", "DESC"]], // newest first (optional)
+      order: [["createdAt", "DESC"]], // newest first
+      include: [
+        {
+          model: Project,
+          as: "project", // 👈 must match your association alias
+          required: false, // left join → includes even if project is null
+          attributes: [
+            "pid",
+            "projectName",
+            "projectType",
+            "startDate",
+            "endDate",
+          ], // choose what you need
+        },
+      ],
     });
 
     return res.status(200).json(clients);
   } catch (err) {
-    console.error("Error fetching clients:", err);
+    console.error("❌ Error fetching clients:", err);
     return res
       .status(500)
       .json({ message: "Internal Server Error", error: err.message });
   }
 };
 
-// ✅ Get single client by ID
+// ✅ Get single client by ID (with project data)
 exports.getClientById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Validate id
     if (!id) {
       return res.status(400).json({ message: "Client ID is required" });
     }
 
-    // Find client
-    const client = await Client.findByPk(id);
+    const client = await Client.findByPk(id, {
+      include: [
+        {
+          model: Project,
+          as: "project",
+          required: false,
+          attributes: [
+            "pid",
+            "projectName",
+            "projectType",
+            "startDate",
+            "endDate",
+          ],
+        },
+      ],
+    });
 
     if (!client) {
       return res.status(404).json({ message: "Client not found" });
@@ -87,7 +117,7 @@ exports.getClientById = async (req, res) => {
 
     return res.status(200).json(client);
   } catch (err) {
-    console.error("Error fetching client by ID:", err);
+    console.error("❌ Error fetching client by ID:", err);
     return res
       .status(500)
       .json({ message: "Internal Server Error", error: err.message });
@@ -124,7 +154,9 @@ exports.updateClient = async (req, res) => {
       if (existingPhone) {
         return res
           .status(409)
-          .json({ message: "Another client with this phone number already exists" });
+          .json({
+            message: "Another client with this phone number already exists",
+          });
       }
     }
 

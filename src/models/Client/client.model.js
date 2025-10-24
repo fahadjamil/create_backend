@@ -1,3 +1,4 @@
+// models/Client.js
 const { DataTypes } = require("sequelize");
 
 module.exports = (sequelize, Sequelize) => {
@@ -10,7 +11,7 @@ module.exports = (sequelize, Sequelize) => {
         defaultValue: Sequelize.UUIDV4,
       },
 
-      // Client main details
+      // 🧾 Basic Client Info
       fullName: {
         type: DataTypes.STRING,
         allowNull: false,
@@ -21,36 +22,40 @@ module.exports = (sequelize, Sequelize) => {
       },
       company: {
         type: DataTypes.STRING,
-        allowNull: true,
       },
       email: {
         type: DataTypes.STRING,
         allowNull: false,
         unique: true,
-        validate: {
-          isEmail: true,
-        },
+        validate: { isEmail: true },
       },
       phone: {
         type: DataTypes.STRING,
         allowNull: false,
-        validate: {
-          len: [7, 15], // keep same as frontend regex
-        },
+        validate: { len: [7, 15] },
       },
       address: {
         type: DataTypes.TEXT,
-        allowNull: true,
       },
 
-      // Contact person details
+      // 👤 Contact Details
       contactPersonName: {
         type: DataTypes.STRING,
-        allowNull: true,
       },
       contactPersonRole: {
         type: DataTypes.STRING,
-        allowNull: true,
+      },
+
+      // 🔗 Foreign Key — optional during creation
+      projectId: {
+        type: DataTypes.UUID,
+        allowNull: true, // ✅ make nullable so sync doesn't break
+        references: {
+          model: "projects", // must match Project.tableName
+          key: "pid",
+        },
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
       },
     },
     {

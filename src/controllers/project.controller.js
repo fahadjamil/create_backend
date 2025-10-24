@@ -17,10 +17,10 @@ exports.Newproject = async (req, res) => {
       "clientName",
       "client",
       "startDate",
-      "endDate", // phone is required for client sync
+      "endDate",
     ];
 
-    // If creating new project (pid missing) → validate required fields
+    // If creating new project → validate required fields
     if (!req.body.pid) {
       const missingFields = requiredFields.filter(
         (field) => !req.body[field] || req.body[field].toString().trim() === ""
@@ -59,16 +59,6 @@ exports.Newproject = async (req, res) => {
 
       // ✅ Remove from draft if exists
       await DraftProject.destroy({ where: { dpid: req.body.pid } });
-
-      // 🔹 Sync client
-      const client = await syncClient(req.body);
-
-      return res.status(200).json({
-        success: true,
-        message: "✅ Project updated successfully (client synced, draft removed)",
-        project,
-        client,
-      });
     } else {
       // 🔹 Create new project
       project = await Project.create({
@@ -82,17 +72,19 @@ exports.Newproject = async (req, res) => {
           where: { dpid: req.body.dpid || req.body.pid },
         });
       }
-
-      // 🔹 Sync client
-      const client = await syncClient(req.body);
-
-      return res.status(201).json({
-        success: true,
-        message: "✅ Project created successfully (client synced, draft removed)",
-        project,
-        client,
-      });
     }
+
+    // 🔹 Sync client (link with project ID)
+    const client = await syncClient({ ...req.body, projectId: project.pid });
+
+    return res.status(req.body.pid ? 200 : 201).json({
+      success: true,
+      message: `✅ Project ${
+        req.body.pid ? "updated" : "created"
+      } successfully (client synced, draft removed)`,
+      project,
+      client,
+    });
   } catch (error) {
     console.error("❌ Error in Newproject:", error);
     return res.status(500).json({
@@ -111,25 +103,32 @@ const syncClient = async (data) => {
       return null;
     }
 
+    if (!data.projectId) {
+      console.log("⚠️ No projectId provided, skipping client sync");
+      return null;
+    }
+
     const clientData = {
       fullName: data.clientName || "",
       clientType: data.client || "",
       company: data.contactBrand || "",
       email: data.contactEmail || "",
       phone: data.contactNumber,
-      address:  "",
+      address: "",
       contactPersonName: data.contactName || "",
       contactPersonRole: data.contactRole || "",
+      projectId: data.projectId, // ✅ store linked project
     };
 
+    // 🔍 Find client by phone
     let client = await Client.findOne({ where: { phone: data.pointMobile } });
 
     if (client) {
       await client.update(clientData);
-      console.log("🔄 Existing client updated:", client.fullName);
+      console.log(`🔄 Existing client updated: ${client.fullName}`);
     } else {
       client = await Client.create(clientData);
-      console.log("✅ New client created:", client.fullName);
+      console.log(`✅ New client created: ${client.fullName}`);
     }
 
     return client;

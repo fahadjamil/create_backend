@@ -42,6 +42,21 @@ db.User.hasMany(db.Project, { foreignKey: "userId", as: "projects" });
 db.Project.belongsTo(db.User, { foreignKey: "userId", as: "owner" });
 db.DraftProject.belongsTo(db.User, { foreignKey: "userId", as: "owner" });
 
+// // 🧩 Project ↔ Client (Main Association)
+// db.Project.hasMany(db.Client, {
+//   foreignKey: "projectId",
+//   as: "clients",
+//   onDelete: "CASCADE",
+//   onUpdate: "CASCADE",
+// });
+
+db.Client.belongsTo(db.Project, {
+  foreignKey: "projectId",
+  as: "project",
+  onDelete: "CASCADE",
+  onUpdate: "CASCADE",
+});
+
 // Optional: User-Client or Project-Client associations (if applicable)
 // Example:
 // db.User.hasMany(db.Client, { foreignKey: "userId", as: "clients" });
