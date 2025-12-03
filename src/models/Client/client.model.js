@@ -59,10 +59,9 @@ module.exports = (sequelize, Sequelize) => {
       },
 
       // 🔗 User Relationship (IMPORTANT)
-      userId: {
+      user_id: {
         type: DataTypes.UUID,
         allowNull: false,
-        field: "user_id",
         references: {
           model: "user", // match your User model table name
           key: "uid",

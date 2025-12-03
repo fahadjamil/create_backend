@@ -29,7 +29,7 @@ exports.createClient = async (req, res) => {
 
     // 🔍 Check duplicate phone for this user
     const existingClient = await Client.findOne({
-      where: { phone, userId },
+      where: { phone, user_id: userId },
     });
 
     if (existingClient) {
@@ -49,7 +49,7 @@ exports.createClient = async (req, res) => {
       address,
       contactPersonName,
       contactPersonRole,
-      userId,
+      user_id: userId,
     });
 
     return res.status(201).json({
@@ -148,7 +148,7 @@ exports.updateClient = async (req, res) => {
       return res.status(400).json({ message: "userId is required" });
     }
 
-    const client = await Client.findOne({ where: { cid: id, userId } });
+    const client = await Client.findOne({ where: { cid: id, user_id: userId } });
 
     if (!client) {
       return res.status(404).json({
@@ -159,7 +159,7 @@ exports.updateClient = async (req, res) => {
     // 🔍 prevent duplicate phone number for same user
     if (phone && phone !== client.phone) {
       const duplicate = await Client.findOne({
-        where: { phone, userId },
+        where: { phone, user_id: userId },
       });
 
       if (duplicate) {
@@ -208,7 +208,7 @@ exports.getClientsByUser = async (req, res) => {
     }
 
     const clients = await Client.findAll({
-      where: { userId },
+      where: { user_id: userId },
       order: [["createdAt", "DESC"]],
       include: [
         {
