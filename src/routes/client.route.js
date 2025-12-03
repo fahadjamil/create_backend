@@ -12,4 +12,7 @@ module.exports = (app) => {
 
   // Update client
   app.put("/api/clients/:id", clientController.updateClient);
+
+  // Get clients by userId
+  app.get("/api/clients/user/:userId", clientController.getClientsByUser);
 };

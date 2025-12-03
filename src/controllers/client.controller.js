@@ -3,7 +3,7 @@ const Client = db.Client;
 const Project = db.Project;
 
 /* ======================================================
-   ✅ CREATE NEW CLIENT
+   ✅ CREATE NEW CLIENT (userId required)
 ====================================================== */
 exports.createClient = async (req, res) => {
   try {
@@ -16,23 +16,24 @@ exports.createClient = async (req, res) => {
       address,
       contactPersonName,
       contactPersonRole,
+      userId,
     } = req.body;
 
     // Basic validation
-    if (!fullName || !clientType || !phone) {
+    if (!fullName || !clientType || !phone || !userId) {
       return res.status(400).json({
-        message: "Full name, client type, and phone are required fields.",
+        message: "Full name, client type, phone and userId are required fields.",
       });
     }
 
-    // 🔍 Check duplicate phone
+    // 🔍 Check duplicate phone for this user
     const existingClient = await Client.findOne({
-      where: { phone },
+      where: { phone, userId },
     });
 
     if (existingClient) {
       return res.status(409).json({
-        message: "A client with this phone number already exists.",
+        message: "A client with this phone number already exists for this user.",
       });
     }
 
@@ -46,6 +47,7 @@ exports.createClient = async (req, res) => {
       address,
       contactPersonName,
       contactPersonRole,
+      userId,
     });
 
     return res.status(201).json({
@@ -179,6 +181,44 @@ exports.updateClient = async (req, res) => {
     });
   } catch (err) {
     console.error("❌ Error updating client:", err);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: err.message,
+    });
+  }
+};
+
+/* ======================================================
+   ✅ GET ALL CLIENTS OF A SPECIFIC USER
+====================================================== */
+exports.getClientsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    if (!userId) {
+      return res.status(400).json({ message: "User ID is required" });
+    }
+
+    const clients = await Client.findAll({
+      where: { userId },
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: Project,
+          as: "project",
+          required: false,
+          attributes: ["pid", "projectName", "projectType", "startDate", "endDate"],
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: clients.length,
+      clients,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching user clients:", err);
     return res.status(500).json({
       message: "Internal Server Error",
       error: err.message,
