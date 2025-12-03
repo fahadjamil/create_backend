@@ -11,4 +11,6 @@ module.exports = (app) => {
   app.get("/api/clients/:id", clientController.getClientById);
 
   app.put("/api/clients/:id", clientController.updateClient);
+  
+  app.get("/clients/user/:userId", clientController.getClientsByUser);
 };

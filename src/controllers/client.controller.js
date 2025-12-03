@@ -183,3 +183,48 @@ exports.updateClient = async (req, res) => {
       .json({ message: "Internal Server Error", error: err.message });
   }
 };
+
+// ✅ Get all clients of a specific user
+exports.getClientsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params; // or req.query if you prefer query params
+
+    if (!userId) {
+      return res.status(400).json({
+        message: "User ID is required",
+      });
+    }
+
+    const clients = await Client.findAll({
+      where: { userId },
+      order: [["createdAt", "DESC"]],
+      include: [
+        {
+          model: Project,
+          as: "project",
+          required: false,
+          attributes: [
+            "pid",
+            "projectName",
+            "projectType",
+            "startDate",
+            "endDate",
+          ],
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      success: true,
+      count: clients.length,
+      clients,
+    });
+  } catch (err) {
+    console.error("❌ Error fetching user clients:", err);
+    return res.status(500).json({
+      message: "Internal Server Error",
+      error: err.message,
+    });
+  }
+};
+
