@@ -46,13 +46,25 @@ module.exports = (sequelize, Sequelize) => {
         type: DataTypes.STRING,
       },
 
-      // 🔗 Foreign Key — optional during creation
+      // 🔗 Project Relationship
       projectId: {
         type: DataTypes.UUID,
-        allowNull: true, // ✅ make nullable so sync doesn't break
+        allowNull: true,
         references: {
-          model: "projects", // must match Project.tableName
+          model: "projects",
           key: "pid",
+        },
+        onDelete: "CASCADE",
+        onUpdate: "CASCADE",
+      },
+
+      // 🔗 User Relationship (IMPORTANT)
+      userId: {
+        type: DataTypes.UUID,
+        allowNull: false,
+        references: {
+          model: "users", // must match your users table name
+          key: "uid",
         },
         onDelete: "CASCADE",
         onUpdate: "CASCADE",
@@ -60,7 +72,7 @@ module.exports = (sequelize, Sequelize) => {
     },
     {
       timestamps: true,
-      paranoid: true, // enables soft deletes
+      paranoid: true,
       tableName: "clients",
     }
   );

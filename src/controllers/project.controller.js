@@ -95,7 +95,7 @@ exports.Newproject = async (req, res) => {
   }
 };
 
-// 🔹 Client sync logic (unique by phone)
+// 🔹 Client sync logic (unique by phone + store userId)
 const syncClient = async (data) => {
   try {
     if (!data.contactNumber) {
@@ -108,20 +108,31 @@ const syncClient = async (data) => {
       return null;
     }
 
+    if (!data.userId) {
+      console.log("⚠️ No userId provided, skipping client sync");
+      return null;
+    }
+
     const clientData = {
       fullName: data.clientName || "",
       clientType: data.client || "",
       company: data.contactBrand || "",
       email: data.contactEmail || "",
-      phone: data.contactNumber,
+      phone: data.contactNumber, // ✔ correct phone
       address: "",
       contactPersonName: data.contactName || "",
       contactPersonRole: data.contactRole || "",
-      projectId: data.projectId, // ✅ store linked project
+      projectId: data.projectId,
+      userId: data.userId, // ✔ save owner userId
     };
 
-    // 🔍 Find client by phone
-    let client = await Client.findOne({ where: { phone: data.pointMobile } });
+    // 🔍 Find client by phone (correct lookup)
+    let client = await Client.findOne({
+      where: {
+        phone: data.contactNumber, // ✔ fixed bug
+        userId: data.userId, // ✔ ensure same user's client
+      },
+    });
 
     if (client) {
       await client.update(clientData);

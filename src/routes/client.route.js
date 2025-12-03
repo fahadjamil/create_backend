@@ -7,10 +7,12 @@ module.exports = (app) => {
   // Get all clients
   app.get("/api/clients", clientController.getAllClients);
 
-  // ✅ Get single client by ID
+  // Get single client by ID
   app.get("/api/clients/:id", clientController.getClientById);
 
+  // Update client
   app.put("/api/clients/:id", clientController.updateClient);
-  
-  app.get("/clients/user/:userId", clientController.getClientsByUser);
+
+  // Get clients by userId
+  app.get("/api/clients/user/:userId", clientController.getClientsByUser);
 };
