@@ -62,8 +62,9 @@ module.exports = (sequelize, Sequelize) => {
       userId: {
         type: DataTypes.UUID,
         allowNull: false,
+        field: "user_id", // this is the actual column name
         references: {
-          model: "users", // must match your users table name
+          model: "users",
           key: "uid",
         },
         onDelete: "CASCADE",
