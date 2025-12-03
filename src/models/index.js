@@ -42,8 +42,8 @@ db.Client = require("./Client/client.model")(sequelize, Sequelize); // ✅ New C
 db.User.hasMany(db.Project, { foreignKey: "userId", as: "projects" });
 db.Project.belongsTo(db.User, { foreignKey: "userId", as: "owner" });
 db.DraftProject.belongsTo(db.User, { foreignKey: "userId", as: "owner" });
-db.User.hasMany(db.Client, { foreignKey: "userId", as: "clients" });
-db.Client.belongsTo(db.User, { foreignKey: "userId", as: "accountManager" });
+db.User.hasMany(db.Client, { foreignKey: "user_id", as: "clients" });
+db.Client.belongsTo(db.User, { foreignKey: "user_id", as: "accountManager" });
 
 // // 🧩 Project ↔ Client (Main Association)
 // db.Project.hasMany(db.Client, {
