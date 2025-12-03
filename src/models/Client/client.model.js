@@ -58,17 +58,6 @@ module.exports = (sequelize, Sequelize) => {
         onUpdate: "CASCADE",
       },
 
-      // 🔗 User Relationship (IMPORTANT)
-      user_id: {
-        type: DataTypes.UUID,
-        allowNull: false,
-        references: {
-          model: "user", // match your User model table name
-          key: "uid",
-        },
-        onDelete: "CASCADE",
-        onUpdate: "CASCADE",
-      },
     },
     {
       timestamps: true,

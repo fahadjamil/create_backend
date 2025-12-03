@@ -3,7 +3,7 @@ const Client = db.Client;
 const Project = db.Project;
 
 /* ======================================================
-   ✅ CREATE NEW CLIENT (userId required)
+   ✅ CREATE NEW CLIENT
 ====================================================== */
 exports.createClient = async (req, res) => {
   try {
@@ -16,26 +16,23 @@ exports.createClient = async (req, res) => {
       address,
       contactPersonName,
       contactPersonRole,
-      userId,
     } = req.body;
 
     // Basic validation
-    if (!fullName || !clientType || !phone || !userId) {
+    if (!fullName || !clientType || !phone) {
       return res.status(400).json({
-        message:
-          "Full name, client type, phone and userId are required fields.",
+        message: "Full name, client type, and phone are required fields.",
       });
     }
 
-    // 🔍 Check duplicate phone for this user
+    // 🔍 Check duplicate phone
     const existingClient = await Client.findOne({
-      where: { phone, user_id: userId },
+      where: { phone },
     });
 
     if (existingClient) {
       return res.status(409).json({
-        message:
-          "A client with this phone number already exists for this user.",
+        message: "A client with this phone number already exists.",
       });
     }
 
@@ -49,7 +46,6 @@ exports.createClient = async (req, res) => {
       address,
       contactPersonName,
       contactPersonRole,
-      user_id: userId,
     });
 
     return res.status(201).json({
@@ -141,31 +137,25 @@ exports.updateClient = async (req, res) => {
       address,
       contactPersonName,
       contactPersonRole,
-      userId,
     } = req.body;
 
-    if (!userId) {
-      return res.status(400).json({ message: "userId is required" });
-    }
-
-    const client = await Client.findOne({ where: { cid: id, user_id: userId } });
+    const client = await Client.findOne({ where: { cid: id } });
 
     if (!client) {
       return res.status(404).json({
-        message: "Client not found or does not belong to this user",
+        message: "Client not found",
       });
     }
 
-    // 🔍 prevent duplicate phone number for same user
+    // 🔍 prevent duplicate phone number
     if (phone && phone !== client.phone) {
       const duplicate = await Client.findOne({
-        where: { phone, user_id: userId },
+        where: { phone },
       });
 
       if (duplicate) {
         return res.status(409).json({
-          message:
-            "Another client with this phone number already exists for this user.",
+          message: "Another client with this phone number already exists.",
         });
       }
     }
@@ -196,40 +186,3 @@ exports.updateClient = async (req, res) => {
   }
 };
 
-/* ======================================================
-   ✅ GET ALL CLIENTS OF A SPECIFIC USER
-====================================================== */
-exports.getClientsByUser = async (req, res) => {
-  try {
-    const { userId } = req.params;
-
-    if (!userId) {
-      return res.status(400).json({ message: "User ID is required" });
-    }
-
-    const clients = await Client.findAll({
-      where: { user_id: userId },
-      order: [["createdAt", "DESC"]],
-      include: [
-        {
-          model: Project,
-          as: "project",
-          required: false,
-          attributes: ["pid", "projectName", "projectType", "startDate", "endDate"],
-        },
-      ],
-    });
-
-    return res.status(200).json({
-      success: true,
-      count: clients.length,
-      clients,
-    });
-  } catch (err) {
-    console.error("❌ Error fetching user clients:", err);
-    return res.status(500).json({
-      message: "Internal Server Error",
-      error: err.message,
-    });
-  }
-};
