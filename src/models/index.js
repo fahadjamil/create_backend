@@ -37,10 +37,13 @@ db.Project = require("./Project/project.modal")(sequelize, Sequelize);
 db.DraftProject = require("./Project/draftProject.modal")(sequelize, Sequelize);
 db.Client = require("./Client/client.model")(sequelize, Sequelize); // ✅ New Client model
 
+
 // ✅ Example Associations
 db.User.hasMany(db.Project, { foreignKey: "userId", as: "projects" });
 db.Project.belongsTo(db.User, { foreignKey: "userId", as: "owner" });
 db.DraftProject.belongsTo(db.User, { foreignKey: "userId", as: "owner" });
+db.User.hasMany(db.Client, { foreignKey: "userId", as: "clients" });
+db.Client.belongsTo(db.User, { foreignKey: "userId", as: "accountManager" });
 
 // // 🧩 Project ↔ Client (Main Association)
 // db.Project.hasMany(db.Client, {
